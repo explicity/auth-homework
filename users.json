@@ -1,4 +1,20 @@
 [
-    { "email": "Pupkin@gmail.com", "password": "pupkinthegreatest" },
-    { "email": "SomeoneElse@gmail.com", "password": "qwerty" }
+  {
+    "email": "Pupkin@gmail.com",
+    "password": "pupkinthegreatest",
+    "name": "Pupkin",
+    "id": 1
+  },
+  {
+    "email": "SomeoneElse@gmail.com",
+    "password": "qwerty",
+    "name": "Someone",
+    "id": 2
+  },
+  {
+    "email": "johndoe@gmail.com",
+    "password": "johndoe",
+    "name": "John Doe",
+    "id": 3
+  }
 ]

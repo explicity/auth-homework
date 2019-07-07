@@ -34,22 +34,18 @@ passport.use(
 
 const opts = {
   secretOrKey: "your_jwt_secret",
-  jwtFromRequest: ExtractJWT.fromAuthHeaderAsBearerToken()
+  jwtFromRequest: ExtractJWT.fromAuthHeaderWithScheme("Bearer")
 };
 
 passport.use(
-  new JWTStrategy(opts, async (payload, done) => {
-    try {
-      const user = users.find(userFromDB => {
-        if (userFromDB.login === payload.login) {
-          return userFromDB;
-        }
-      });
-      return user
-        ? done(null, user)
-        : done({ status: 401, message: "Token is invalid." }, null);
-    } catch (err) {
-      return done(err);
-    }
+  new JWTStrategy(opts, (payload, done) => {
+    const user = users.find(userFromDB => {
+      if (userFromDB.email === payload.email) {
+        return userFromDB;
+      }
+    });
+    return user
+      ? done(null, user)
+      : done({ status: 401, message: "Token is invalid." }, null);
   })
 );

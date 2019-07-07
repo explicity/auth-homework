@@ -1,11 +1,15 @@
 const express = require("express");
+const path = require("path");
 const router = express.Router();
 
-const jwt = require("jsonwebtoken");
 const passport = require("passport");
+const jwt = require("jsonwebtoken");
 
-router.post("/login", function(req, res, next) {
-  console.log(req, res);
+router.get("/", function(req, res) {
+  res.sendFile(path.join(__dirname, "../login.html"));
+});
+
+router.post("/", function(req, res, next) {
   passport.authenticate("local", { session: false }, (err, user, info) => {
     if (err || !user) {
       return res.status(400).json({
@@ -19,7 +23,7 @@ router.post("/login", function(req, res, next) {
         res.send(err);
       }
 
-      const token = jwt.sign(user, "your_jwt_secret", { expiresIn: "24h" });
+      const token = jwt.sign(user, "your_jwt_secret");
       return res.json({ user, token, auth: true });
     });
   })(req, res);
