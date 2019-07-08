@@ -60,7 +60,7 @@ io.on("connection", socket => {
     if (verifyUser) {
       const user = jwt.decode(token);
       const { name, id } = user;
-      users[socket.id] = { name, id, progress: -1 };
+      users[socket.id] = { name, id, progress: 0 };
       console.log(users);
 
       io.sockets.emit("displayUsers", { users });
@@ -93,7 +93,7 @@ io.on("connection", socket => {
         socket.emit("winner", { users, key: socket.id });
 
         for (const key in users) {
-          users[key].progress = -1;
+          users[key].progress = 0;
         }
 
         let countdown = 10;
