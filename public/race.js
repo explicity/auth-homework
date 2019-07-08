@@ -1,113 +1,118 @@
 let socket = io.connect();
 const jwt = localStorage.getItem("jwt");
 
+const raceWrapper = document.getElementById("race-wrapper");
+
 window.onload = () => {
   if (!jwt) {
     location.replace("/login");
   } else {
-    const raceWrapper = document.getElementById("race-wrapper");
-
     socket.emit("newUser", { token: jwt });
-
-    socket.on("waitingMessage", () => {
-      raceWrapper.innerHTML = "Please wait for others to finish the race!";
-    });
-
-    socket.on("displayUsers", payload => {
-      const { users } = payload;
-      console.log(users);
-
-      for (const key in users) {
-        const element = document.getElementById("user-" + users[key].id);
-
-        if (!element) {
-          const { id, name } = users[key];
-          createUser(id, name);
-        }
-      }
-    });
-
-    socket.on("displayCurrentUser", payload => {
-      const { id } = payload;
-      const userLi = document.getElementById("user-" + id);
-      const progressBar = document.getElementById("progress-" + id);
-      progressBar.classList.add("bg-success");
-      userLi.style.color = "green";
-    });
-
-    socket.on("disconnectUser", payload => {
-      const { users, key } = payload;
-
-      if (users[key]) {
-        const userLi = document.getElementById("user-" + users[key].id);
-        userLi.parentNode.removeChild(userLi);
-      }
-    });
-
-    socket.on("timer", timestamp => {
-      const { countdown } = timestamp;
-      raceWrapper.innerHTML =
-        "Your race will start in " + timestamp.countdown + " seconds";
-      if (countdown == 0) {
-        socket.emit("joinRoom");
-
-        fetch("/race/api", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${jwt}`
-          }
-        })
-          .then(res => {
-            res.json().then(body => {
-              startGame(body.text);
-            });
-          })
-          .catch(err => console.log(err));
-      }
-    });
-
-    socket.on("updateProgressBars", payload => {
-      const { users, key, progress, maxProgress } = payload;
-
-      const progressBar = document.getElementById("progress-" + users[key].id);
-      progressBar.style.width = `${(progress * 100) / maxProgress}%`;
-    });
-
-    socket.on("winner", payload => {
-      const { users, key } = payload;
-
-      while (raceWrapper.firstChild) {
-        raceWrapper.removeChild(raceWrapper.firstChild);
-      }
-
-      let winners = [];
-      for (const key in users) {
-        if (users[key].progress !== 0) {
-          winners.push([users[key].name, users[key].progress]);
-        }
-      }
-
-      winners.sort((a, b) => {
-        return b[1] - a[1];
-      });
-
-      winners.forEach((winner, index) => {
-        let p = document.createElement("p");
-        p.innerHTML = `${index + 1}. ${winner[0]}`;
-        raceWrapper.appendChild(p);
-      });
-
-      const bars = document.querySelectorAll(".progress-bar");
-      bars.forEach(bar => (bar.style.width = "0%"));
-    });
   }
 };
 
+socket.on("waitingMessage", () => {
+  raceWrapper.innerHTML = "Please wait for others to finish the race!";
+});
+
+socket.on("displayUsers", payload => {
+  const { users } = payload;
+
+  for (const key in users) {
+    const element = document.getElementById("user-" + users[key].id);
+
+    if (!element) {
+      const { id, name } = users[key];
+      createUser(id, name);
+    }
+  }
+});
+
+socket.on("displayCurrentUser", payload => {
+  const { id, name } = payload;
+  const element = document.getElementById("user-" + id);
+
+  if (!element) {
+    createUser(id, name);
+  }
+
+  const userLi = document.getElementById("user-" + id);
+  const progressBar = document.getElementById("progress-" + id);
+
+  progressBar.classList.add("bg-success");
+  userLi.style.color = "green";
+});
+
+socket.on("disconnectUser", payload => {
+  const { users, key } = payload;
+
+  if (users[key]) {
+    const userLi = document.getElementById("user-" + users[key].id);
+    userLi.parentNode.removeChild(userLi);
+  }
+});
+
+socket.on("timer", timestamp => {
+  const { countdown } = timestamp;
+
+  raceWrapper.innerHTML =
+    "Your race will start in " + timestamp.countdown + " seconds";
+  if (countdown === 0) {
+    socket.emit("joinRoom", { token: jwt });
+
+    fetch("/race/api", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${jwt}`
+      }
+    })
+      .then(res => {
+        res.json().then(body => {
+          startGame(body.text);
+        });
+      })
+      .catch(err => console.log(err));
+  }
+});
+
+socket.on("updateProgressBars", payload => {
+  const { users, key, progress, maxProgress } = payload;
+
+  const progressBar = document.getElementById("progress-" + users[key].id);
+  progressBar.style.width = `${(progress * 100) / maxProgress}%`;
+});
+
+socket.on("winner", payload => {
+  const { users } = payload;
+
+  while (raceWrapper.firstChild) {
+    raceWrapper.removeChild(raceWrapper.firstChild);
+  }
+
+  let winners = [];
+  for (const key in users) {
+    if (users[key].progress !== 0) {
+      winners.push([users[key].name, users[key].progress]);
+    }
+  }
+
+  winners.sort((a, b) => {
+    return b[1] - a[1];
+  });
+
+  winners.forEach((winner, index) => {
+    let p = document.createElement("p");
+    p.innerHTML = `${index + 1}. ${winner[0]}`;
+    raceWrapper.appendChild(p);
+  });
+
+  const bars = document.querySelectorAll(".progress-bar");
+  bars.forEach(bar => (bar.style.width = "0%"));
+});
+
 function startGame(map) {
   const text = map.text;
-
-  const raceWrapper = document.getElementById("race-wrapper");
 
   raceWrapper.innerHTML = "";
   const textByLetter = text.split("");

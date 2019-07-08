@@ -15,7 +15,7 @@ const race = require("./routes/race");
 
 require("./passport.config");
 
-server.listen(3001);
+server.listen(3000);
 
 app.use(logger("dev"));
 app.use(express.static(path.join(__dirname, "public")));
@@ -25,13 +25,17 @@ app.use(bodyParser.json());
 
 app.use("/", index);
 app.use("/login", auth);
-app.use("/race", /*passport.authenticate("jwt", { session: false }),*/ race);
+app.use("/race", race);
 
 let users = {},
   isRaceOn = false,
   isCountdownOn = false;
 
 io.on("connection", socket => {
+  if (io.engine.clientsCount === 1) {
+    isRaceOn = false;
+  }
+
   if (!isRaceOn) {
     socket.join("play");
 
@@ -60,11 +64,16 @@ io.on("connection", socket => {
     if (verifyUser) {
       const user = jwt.decode(token);
       const { name, id } = user;
-      users[socket.id] = { name, id, progress: -1 };
-      console.log(users);
 
-      io.sockets.emit("displayUsers", { users });
-      socket.emit("displayCurrentUser", { id });
+      const playUsers = io.sockets.adapter.rooms["play"];
+
+      if (playUsers) {
+        if (playUsers.sockets.hasOwnProperty(socket.id)) {
+          users[socket.id] = { name, id, progress: 0 };
+          io.sockets.emit("displayUsers", { users });
+        }
+      }
+      socket.emit("displayCurrentUser", { id, name });
     }
   });
 
@@ -89,6 +98,7 @@ io.on("connection", socket => {
       });
 
       if (user.progress === maxProgress) {
+        isRaceOn = false;
         io.sockets.in("play").emit("winner", { users, key: socket.id });
         socket.emit("winner", { users, key: socket.id });
 
@@ -96,26 +106,38 @@ io.on("connection", socket => {
           users[key].progress = -1;
         }
 
+        isCountdownOn = true;
         let countdown = 10;
 
         setInterval(() => {
-          setInterval(() => {
-            countdown--;
-            if (countdown < 0) {
-              isRaceOn = true;
-              isCountdownOn = false;
-              return;
-            }
-            io.sockets.emit("timer", { countdown });
-          }, 1000);
-        }, 2000);
+          countdown--;
+          if (countdown < 0) {
+            isRaceOn = true;
+            isCountdownOn = false;
+            return;
+          }
+          io.sockets.emit("timer", { countdown });
+        }, 1000);
       }
     }
   });
 
-  socket.on("joinRoom", () => {
-    socket.join("play");
-  });
+  socket.on("joinRoom", payload => {
+    const { token } = payload;
+    const verifyUser = jwt.verify(token, "your_jwt_secret");
+
+    if (verifyUser) {
+      const playUsers = io.sockets.adapter.rooms["play"].sockets;
+      const user = jwt.decode(token);
+      const { name, id } = user;
+
+      if (!playUsers.hasOwnProperty(socket.id)) {
+        users[socket.id] = { name, id, progress: 0 };
+        io.sockets.emit("displayUsers", { users });
+        socket.join("play");
+      }
+    }
+  });  
 
   socket.on("disconnect", function() {
     socket.leave("play");
