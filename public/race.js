@@ -1,3 +1,5 @@
+import { User, currentUser } from "./user.js";
+
 let socket = io.connect();
 const jwt = localStorage.getItem("jwt");
 
@@ -19,29 +21,34 @@ socket.on("displayUsers", payload => {
   const { users } = payload;
 
   for (const key in users) {
-    const element = document.getElementById("user-" + users[key].id);
+    const { id, name } = users[key];  
 
-    if (!element) {
-      const { id, name } = users[key];
-      createUser(id, name);
+    if (!ifUserExists(id)) { 
+      // display user using factory design pattern
+      const racer = User(id, name); 
+      racer.display();
     }
   }
 });
 
 socket.on("displayCurrentUser", payload => {
   const { id, name } = payload;
-  const element = document.getElementById("user-" + id);
+  // modify user with some styles using factory design pattern
+  const racer = Object.assign(User(id, name), currentUser);
 
-  if (!element) {
-    createUser(id, name);
+  if (!ifUserExists(id)) {
+    racer.display();
   }
 
-  const userLi = document.getElementById("user-" + id);
-  const progressBar = document.getElementById("progress-" + id);
+  // display modifications
+  racer.displayCurrent();
 
-  progressBar.classList.add("bg-success");
-  userLi.style.color = "green";
 });
+
+const ifUserExists = id => {
+  const element = document.getElementById("user-" + id);
+  return element;
+};
 
 socket.on("disconnectUser", payload => {
   const { users, key } = payload;
@@ -154,27 +161,4 @@ function typing(e) {
       }
     }
   }
-}
-
-function createUser(id, name) {
-  const playersList = document.getElementById("players-list");
-
-  const newLi = document.createElement("li");
-  newLi.setAttribute("id", "user-" + id);
-  newLi.innerHTML = `${name}`;
-  playersList.appendChild(newLi);
-
-  const progressBarDiv = document.createElement("div");
-  progressBarDiv.classList.add("progress");
-  const progressBar = document.createElement("div");
-  progressBar.classList.add("progress-bar");
-  progressBar.setAttribute("role", "progressbar");
-  progressBar.setAttribute("id", "progress-" + id);
-  progressBar.setAttribute("aria-valuenow", 25);
-  progressBar.setAttribute("aria-valuemin", 0);
-  progressBar.setAttribute("aria-valuemax", 100);
-  progressBar.style.width = "0%";
-
-  progressBarDiv.appendChild(progressBar);
-  newLi.appendChild(progressBarDiv);
 }

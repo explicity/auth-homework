@@ -86,7 +86,7 @@ io.on("connection", socket => {
       user.progress++;
       io.sockets.in("play").emit("updateProgressBars", {
         users,
-        key: socket.id,
+        key: socket.id,  
         progress: user.progress,
         maxProgress
       });
@@ -127,17 +127,19 @@ io.on("connection", socket => {
     const verifyUser = jwt.verify(token, "your_jwt_secret");
 
     if (verifyUser) {
-      const playUsers = io.sockets.adapter.rooms["play"].sockets;
+      const playUsers = io.sockets.adapter.rooms["play"];
       const user = jwt.decode(token);
       const { name, id } = user;
 
-      if (!playUsers.hasOwnProperty(socket.id)) {
-        users[socket.id] = { name, id, progress: 0 };
-        io.sockets.emit("displayUsers", { users });
-        socket.join("play");
+      if (playUsers) {
+        if (!playUsers.sockets.hasOwnProperty(socket.id)) {
+          users[socket.id] = { name, id, progress: 0 };
+          io.sockets.emit("displayUsers", { users });
+          socket.join("play");
+        }
       }
     }
-  });  
+  });
 
   socket.on("disconnect", function() {
     socket.leave("play");

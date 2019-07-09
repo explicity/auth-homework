@@ -52,13 +52,17 @@ h1 {
 
 .race {
   min-height: 300px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  display: grid;
+  grid-template-columns: 75% 25%;
+}
+
+#race-wrapper {
+  text-align: center;
+  align-self: center;
 }
 
 .bg-next {
-    background-color: yellow;
+  background-color: yellow;
 }
 
 .bg {
@@ -66,3 +70,39 @@ h1 {
   color: #fff;
 }
 
+.commentator {
+  justify-self: center;
+  align-self: center;
+}
+
+.commentator-img {
+  margin-top: 1.5rem;
+  height: 150px;
+  width: auto;
+}
+
+.speech-bubble {
+  position: relative;
+  background: #87b72d;
+  border-radius: 0.4em;
+  padding: 10px;
+}
+
+#bubble-inner {
+  word-wrap: break-word;
+}
+
+.speech-bubble:after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border: 20px solid transparent;
+  border-top-color: #87b72d;
+  border-bottom: 0;
+  border-left: 0;
+  margin-left: -10px;
+  margin-bottom: -20px;
+}
