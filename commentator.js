@@ -7,6 +7,11 @@ class Commentator {
     this.broadcast = new BroadcasHelper(socket);
   }
 
+  joke() {
+    const joke = new CommentatorJokes().getJoke();
+    this.broadcast.shareMessage(joke);
+  }
+
   initialize() {
     const greeting = new Messages().getGreeting();
 
@@ -36,7 +41,6 @@ class Commentator {
   }
 
   winner(name) {
-    this.isGameOn = false;
     clearInterval(this.timer);
     const message = new Messages().getWinner(name);
 
@@ -62,15 +66,17 @@ class Commentator {
     let message = new Messages().getFinal();
 
     map(winners, (winner, index) => {
-        const { name, counter } = winner;
+      const { name, counter } = winner;
+      if (index < 3) {
         message += `${name} (${counter}s)`;
 
-        index !== winners.length-1 ? message += ', ' : message += '. '
+        index !== winners.length - 1 ? (message += ", ") : (message += ". ");
+      }
     });
-    message += 'Thanks all for following us! See ya!'
+    message += "Thanks all for following us! See ya!";
 
     this.broadcast.shareMessage(message);
-}
+  }
 }
 
 const sortUsers = users => {
@@ -124,12 +130,13 @@ class Messages {
   getDetails(counter, sortedNames, distance) {
     let text = `And it's ${counter}s second of the race! The leader is ${
       sortedNames[0]
-    }! Good joob! `;
+    }! Good job! `;
 
     if (sortedNames.length > 1) {
       map(sortedNames, (user, index) => {
         switch (index) {
-          case 0: break;
+          case 0:
+            break;
           case 1:
             text += `Right after him is ${user}. `;
             break;
@@ -145,7 +152,8 @@ class Messages {
   }
 
   getFinal() {
-    const text = 'End of the game! And here are our finalists (from first to last place): ';
+    const text =
+      "End of the game! And here are our finalists (from first to last place): ";
     return text;
   }
 }
@@ -166,20 +174,33 @@ class Racers {
   }
 
   getCar() {
-    return racingApi.getItems();
+    const api = racingApi.getItems();
+    return api[1];
+  }
+}
+
+class CommentatorJokes {
+  getJoke() {
+    const api = racingApi.getItems();
+    return api[0];
   }
 }
 
 const racingApi = {
-  cars: ["Audi", "Ferrarri", "BMW", "Toyota", "Porshe"],
+  jokes: [
+    "There must be funny joke, you know...",
+    "No funny jokes today dude, just racing",
+    "Did you come here to read a funny joke? Gonna dissapoint you"
+  ],
+  cars: ["Audi", "Ferrarri", "BMW"],
 
   getItems: function() {
     const items = map(this, item => {
-      const random = Math.floor(Math.random() * 5);
+      const random = Math.floor(Math.random() * 3);
       return item[random];
     });
 
-    return items[0];
+    return items;
   }
 };
 

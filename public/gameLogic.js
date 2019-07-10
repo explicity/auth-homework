@@ -23,7 +23,6 @@ function startGame(map) {
 }
 
 function typing(e) {
-  console.log(jwt);
   const spans = document.querySelectorAll(".span");
   const maxProgress = spans.length;
 

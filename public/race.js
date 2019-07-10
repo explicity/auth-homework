@@ -98,7 +98,7 @@ socket.on("winner", payload => {
 
   _.forEach(winners, (winner, index) => {
     let p = document.createElement("p");
-    p.innerHTML = `${index + 1}. ${winner}`;
+    p.innerHTML = `${index + 1}. ${winner.name}`;
     raceWrapper.appendChild(p);
   });
 

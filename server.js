@@ -36,7 +36,8 @@ app.use("/race", race);
 let users = {},
   isRaceOn = false,
   isCountdownOn = false,
-  winners = [], counter = 0;
+  winners = [],
+  counter = 0;
 
 io.on("connection", socket => {
   //creating a commentator with facade design pattern
@@ -49,8 +50,6 @@ io.on("connection", socket => {
 
   if (!isRaceOn) {
     socket.join("play");
-    console.log("CONNETCTED", socket.id);
-    console.log(users);
 
     if (io.engine.clientsCount === 1 && !isCountdownOn) {
       startTimer();
@@ -68,16 +67,14 @@ io.on("connection", socket => {
       const { name, id } = user;
 
       const playUsers = io.sockets.adapter.rooms["play"];
-  
-      if (playUsers) {  
+
+      if (playUsers) {
         if (has(playUsers.sockets, socket.id)) {
-          console.log("NEW PLAYER", users, socket.id);
           users[socket.id] = { name, id, progress: 0 };
           io.sockets.emit("displayUsers", { users });
         }
       }
       socket.emit("displayCurrentUser", { id, name });
-      console.log(users);
     }
   });
 
@@ -87,10 +84,8 @@ io.on("connection", socket => {
     const verifyUser = jwt.verify(token, "your_jwt_secret");
 
     if (verifyUser) {
-      console.log(users, socket.id);
       const user = users[socket.id];
       const { name } = user;
-      console.log(user, maxProgress);
       user.progress++;
       io.sockets.in("play").emit("updateProgressBars", {
         users,
@@ -111,7 +106,8 @@ io.on("connection", socket => {
 
       if (user.progress === maxProgress) {
         commentator.winner(name);
-        winners.push({name, counter});
+        socket.emit("waitingMessage");
+        winners.push({ name, counter });
 
         if (winners.length === size(users)) {
           endGame(winners);
@@ -151,31 +147,33 @@ io.on("connection", socket => {
   });
 
   function startTimer() {
-    let countdown = 5;
+    let countdown = 15;
     isCountdownOn = true;
 
     const timer = setInterval(() => {
       countdown--;
-      console.log("TIMER", countdown);
 
       if (countdown < 0) {
         isRaceOn = true;
         isCountdownOn = false;
 
-        gameTimer();
+        gameTimer();  
         commentator.introduceUsers(users);
         clearInterval(timer);
         return;
       }
       io.sockets.emit("timer", { countdown });
-    }, 1000);
+    }, 1000); 
   }
 
   const gameTimer = () => {
- 
     const timer = setInterval(() => {
       counter++;
- 
+      // display a joke every 11 seconds 
+      if (counter % 11 === 0) {
+        commentator.joke()
+      }
+
       if (counter % 15 === 0) {
         commentator.getDetails(users, counter);
       }
@@ -183,18 +181,17 @@ io.on("connection", socket => {
       if (!isRaceOn) {
         counter = 0;
         clearInterval(timer);
-      }
+      } 
     }, 1000);
   };
 
   function endGame() {
-    console.log(winners);
     io.sockets.in("play").emit("winner", { winners });
     socket.emit("winner", { winners });
 
     commentator.endGame(winners);
-
-    isRaceOn = false; 
+ 
+    isRaceOn = false;
     winners = [];
     io.sockets.emit("joinRoom");
 
