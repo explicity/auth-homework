@@ -15,10 +15,11 @@ const User = function(id, name) {
         id: "user-" + this.id
       }
     });
-    playersList.appendChild(newLi);
 
     this.createName(newLi);
     this.createProgressBar(newLi);
+
+    playersList.appendChild(newLi);
   };
 
   user.createName = function(item) {
@@ -47,6 +48,11 @@ const User = function(id, name) {
     progressBarDiv.appendChild(progressBar);
     item.appendChild(progressBarDiv);
   };
+
+  user.delete = function() {
+    const userLi = document.getElementById("user-" + this.id);
+    userLi.parentNode.removeChild(userLi);
+  }
 
   return user;
 };

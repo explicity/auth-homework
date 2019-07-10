@@ -9,9 +9,15 @@ const cookieParser = require("cookie-parser");
 const bodyParser = require("body-parser");
 const jwt = require("jsonwebtoken");
 
+const size = require("lodash/size");
+const has = require("lodash/has");
+const map = require("lodash/map");
+
 const index = require("./routes/index");
 const auth = require("./routes/auth");
 const race = require("./routes/race");
+
+const Commentator = require("./commentator");
 
 require("./passport.config");
 
@@ -29,29 +35,25 @@ app.use("/race", race);
 
 let users = {},
   isRaceOn = false,
-  isCountdownOn = false;
+  isCountdownOn = false,
+  winners = [], counter = 0;
 
 io.on("connection", socket => {
+  //creating a commentator with facade design pattern
+  const commentator = new Commentator(socket);
+  commentator.initialize();
+
   if (io.engine.clientsCount === 1) {
     isRaceOn = false;
   }
 
   if (!isRaceOn) {
     socket.join("play");
+    console.log("CONNETCTED", socket.id);
+    console.log(users);
 
-    if (io.engine.clientsCount === 1 || !isCountdownOn) {
-      let countdown = 10;
-      isCountdownOn = true;
-
-      setInterval(() => {
-        countdown--;
-        if (countdown < 0) {
-          isRaceOn = true;
-          isCountdownOn = false;
-          return;
-        }
-        io.sockets.emit("timer", { countdown });
-      }, 1000);
+    if (io.engine.clientsCount === 1 && !isCountdownOn) {
+      startTimer();
     }
   } else {
     socket.emit("waitingMessage");
@@ -66,27 +68,33 @@ io.on("connection", socket => {
       const { name, id } = user;
 
       const playUsers = io.sockets.adapter.rooms["play"];
-
-      if (playUsers) {
-        if (playUsers.sockets.hasOwnProperty(socket.id)) {
+  
+      if (playUsers) {  
+        if (has(playUsers.sockets, socket.id)) {
+          console.log("NEW PLAYER", users, socket.id);
           users[socket.id] = { name, id, progress: 0 };
           io.sockets.emit("displayUsers", { users });
         }
       }
       socket.emit("displayCurrentUser", { id, name });
+      console.log(users);
     }
   });
 
   socket.on("updateProgress", payload => {
     const { token, maxProgress } = payload;
+
     const verifyUser = jwt.verify(token, "your_jwt_secret");
 
     if (verifyUser) {
+      console.log(users, socket.id);
       const user = users[socket.id];
+      const { name } = user;
+      console.log(user, maxProgress);
       user.progress++;
       io.sockets.in("play").emit("updateProgressBars", {
         users,
-        key: socket.id,  
+        key: socket.id,
         progress: user.progress,
         maxProgress
       });
@@ -97,27 +105,17 @@ io.on("connection", socket => {
         maxProgress
       });
 
+      if (maxProgress - user.progress === 6) {
+        commentator.warning(name);
+      }
+
       if (user.progress === maxProgress) {
-        isRaceOn = false;
-        io.sockets.in("play").emit("winner", { users, key: socket.id });
-        socket.emit("winner", { users, key: socket.id });
+        commentator.winner(name);
+        winners.push({name, counter});
 
-        for (const key in users) {
-          users[key].progress = -1;
+        if (winners.length === size(users)) {
+          endGame(winners);
         }
-
-        isCountdownOn = true;
-        let countdown = 10;
-
-        setInterval(() => {
-          countdown--;
-          if (countdown < 0) {
-            isRaceOn = true;
-            isCountdownOn = false;
-            return;
-          }
-          io.sockets.emit("timer", { countdown });
-        }, 1000);
       }
     }
   });
@@ -132,12 +130,13 @@ io.on("connection", socket => {
       const { name, id } = user;
 
       if (playUsers) {
-        if (!playUsers.sockets.hasOwnProperty(socket.id)) {
+        if (!has(playUsers.sockets, socket.id)) {
           users[socket.id] = { name, id, progress: 0 };
-          io.sockets.emit("displayUsers", { users });
           socket.join("play");
         }
       }
+
+      io.sockets.emit("displayUsers", { users });
     }
   });
 
@@ -150,6 +149,61 @@ io.on("connection", socket => {
       isRaceOn = false;
     }
   });
+
+  function startTimer() {
+    let countdown = 5;
+    isCountdownOn = true;
+
+    const timer = setInterval(() => {
+      countdown--;
+      console.log("TIMER", countdown);
+
+      if (countdown < 0) {
+        isRaceOn = true;
+        isCountdownOn = false;
+
+        gameTimer();
+        commentator.introduceUsers(users);
+        clearInterval(timer);
+        return;
+      }
+      io.sockets.emit("timer", { countdown });
+    }, 1000);
+  }
+
+  const gameTimer = () => {
+ 
+    const timer = setInterval(() => {
+      counter++;
+ 
+      if (counter % 15 === 0) {
+        commentator.getDetails(users, counter);
+      }
+
+      if (!isRaceOn) {
+        counter = 0;
+        clearInterval(timer);
+      }
+    }, 1000);
+  };
+
+  function endGame() {
+    console.log(winners);
+    io.sockets.in("play").emit("winner", { winners });
+    socket.emit("winner", { winners });
+
+    commentator.endGame(winners);
+
+    isRaceOn = false; 
+    winners = [];
+    io.sockets.emit("joinRoom");
+
+    map(users, user => {
+      user.progress = 0;
+    });
+
+    startTimer();
+  }
 });
 
 module.exports = app;
